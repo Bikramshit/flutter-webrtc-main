@@ -26,6 +26,8 @@
 #import "LocalTrack.h"
 #import "LocalAudioTrack.h"
 #import "LocalVideoTrack.h"
+#import "FlutterWebRTCPipManager.h"
+
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wprotocol"
@@ -373,6 +375,29 @@ static FlutterWebRTCPlugin *sharedSingleton;
 
     self.peerConnections[peerConnectionId] = peerConnection;
     result(@{@"peerConnectionId" : peerConnectionId});
+  }  if ([@"registerPipRenderer" isEqualToString:call.method]) {
+    NSDictionary *args = call.arguments;
+    NSNumber *textureId = args[@"textureId"];
+
+    if (textureId == nil || ![textureId isKindOfClass:[NSNumber class]]) {
+      result([FlutterError errorWithCode:@"ARG_ERROR"
+                                 message:@"textureId (int) is required"
+                                 details:nil]);
+      return;
+    }
+
+    FlutterRTCVideoRenderer *renderer = self.videoRenderers[textureId];
+    if (renderer && renderer.videoView) {
+      // Save the native video view for PiP use
+      [FlutterWebRTCPipManager sharedInstance].pipVideoView = renderer.videoView;
+      NSLog(@"📹 Registered PiP renderer for textureId: %@", textureId);
+      result(@(YES));
+    } else {
+      result([FlutterError errorWithCode:@"NO_RENDERER"
+                                 message:@"Renderer not found for given textureId"
+                                 details:nil]);
+    }
+
   } else if ([@"getUserMedia" isEqualToString:call.method]) {
     NSDictionary* argsMap = call.arguments;
     NSDictionary* constraints = argsMap[@"constraints"];
