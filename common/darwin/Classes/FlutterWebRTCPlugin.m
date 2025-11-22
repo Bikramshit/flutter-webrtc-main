@@ -26,8 +26,11 @@
 #import "LocalTrack.h"
 #import "LocalAudioTrack.h"
 #import "LocalVideoTrack.h"
+#import <TargetConditionals.h> 
+#if TARGET_OS_IPHONE
 #import "FlutterWebRTCPipManager.h"
 #import <WebRTC/RTCMTLVideoView.h>
+#endif
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wprotocol"
@@ -41,9 +44,9 @@
 @interface VideoEncoderFactorySimulcast : RTCVideoEncoderFactorySimulcast
 @end
 
-
+#if TARGET_OS_IPHONE
 static NSMutableDictionary<NSNumber *, FlutterRTCVideoRenderer *> *gRendererByTextureId;
-
+#endif
 
 
 NSArray<RTC_OBJC_TYPE(RTCVideoCodecInfo) *>* motifyH264ProfileLevelId(
@@ -124,9 +127,12 @@ void postEvent(FlutterEventSink _Nonnull sink, id _Nullable event) {
 }
 + (void)initialize {
   if (self == [FlutterWebRTCPlugin class]) {
+#if TARGET_OS_IPHONE
     gRendererByTextureId = [NSMutableDictionary dictionary];
+#endif
   }
 }
+
 static FlutterWebRTCPlugin *sharedSingleton;
 
 + (FlutterWebRTCPlugin *)sharedSingleton
@@ -385,7 +391,8 @@ static FlutterWebRTCPlugin *sharedSingleton;
     self.peerConnections[peerConnectionId] = peerConnection;
     result(@{@"peerConnectionId" : peerConnectionId});
   }
- else if ([@"registerPipRenderer" isEqualToString:call.method]) {
+else if ([@"registerPipRenderer" isEqualToString:call.method]) {
+#if TARGET_OS_IPHONE
   NSDictionary *args = call.arguments;
   NSNumber *textureId = args[@"textureId"];
 
@@ -396,18 +403,14 @@ static FlutterWebRTCPlugin *sharedSingleton;
     return;
   }
 
-  // Look up our renderer by textureId
   FlutterRTCVideoRenderer *renderer = gRendererByTextureId[textureId];
 
   if (renderer && renderer.videoTrack) {
-    // Create a native WebRTC view for PiP
     RTCMTLVideoView *pipView = [[RTCMTLVideoView alloc] initWithFrame:CGRectZero];
     pipView.videoContentMode = UIViewContentModeScaleAspectFill;
 
-    // Attach videoTrack to this native view
     [renderer.videoTrack addRenderer:pipView];
 
-    // Store view for PiP usage
     [FlutterWebRTCPipManager sharedInstance].pipVideoView = pipView;
 
     NSLog(@"📹 Registered PiP renderer for textureId: %@", textureId);
@@ -417,7 +420,14 @@ static FlutterWebRTCPlugin *sharedSingleton;
                                message:@"Renderer or videoTrack not found for textureId"
                                details:nil]);
   }
+#else
+  // macOS: method exists but is a no-op
+  result([FlutterError errorWithCode:@"UNAVAILABLE"
+                             message:@"registerPipRenderer is only available on iOS"
+                             details:nil]);
+#endif
 }
+
 
  else if ([@"getUserMedia" isEqualToString:call.method]) {
     NSDictionary* argsMap = call.arguments;
