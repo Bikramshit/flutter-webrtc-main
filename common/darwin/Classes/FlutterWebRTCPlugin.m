@@ -375,7 +375,7 @@ static FlutterWebRTCPlugin *sharedSingleton;
 
     self.peerConnections[peerConnectionId] = peerConnection;
     result(@{@"peerConnectionId" : peerConnectionId});
-  }  if ([@"registerPipRenderer" isEqualToString:call.method]) {
+  }else  if ([@"registerPipRenderer" isEqualToString:call.method]) {
     NSDictionary *args = call.arguments;
     NSNumber *textureId = args[@"textureId"];
 
@@ -386,7 +386,7 @@ static FlutterWebRTCPlugin *sharedSingleton;
       return;
     }
 
-    FlutterRTCVideoRenderer *renderer = self.videoRenderers[textureId];
+    FlutterRTCVideoRenderer *renderer = self.renders[textureId];
     if (renderer && renderer.videoView) {
       // Save the native video view for PiP use
       [FlutterWebRTCPipManager sharedInstance].pipVideoView = renderer.videoView;
